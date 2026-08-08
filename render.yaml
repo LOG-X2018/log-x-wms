@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: log-x-wms
+    runtime: node
+    plan: free
+    buildCommand: npm run check
+    startCommand: npm start
+    healthCheckPath: /
+    autoDeploy: true
