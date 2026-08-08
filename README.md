@@ -23,7 +23,11 @@ Az `.env.example` a publikus URL/anon-kulcs helyét dokumentálja. Service role 
 
 ## Publikus telepítés
 
-Készen áll Render Blueprinthoz: a `render.yaml` Node web service-ként indítja a projektet, és a build során lefuttatja az ellenőrzést. Az egyetlen hiányzó következő lépés: jelentkezz be a saját Render-fiókodba, és importáld a projekt Git-repozitóriumát (a Render ekkor a `render.yaml` alapján kiadja a nyilvános URL-t). Supabase használatához a fenti projekt hitelesítő adatai is szükségesek.
+Az alkalmazás nyilvánosan elérhető: https://log-x-wms.onrender.com
+
+A forráskód nyilvános GitHub-repozitóriuma: https://github.com/LOG-X2018/log-x-wms
+
+A Render szolgáltatás a `main` ág új commitjait automatikusan telepíti. Supabase használatához továbbra is egy külön Supabase-projekt és annak hitelesítő adatai szükségesek.
 
 ## Ellenőrzés
 
