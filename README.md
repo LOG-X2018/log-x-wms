@@ -1,41 +1,60 @@
 # LOG-X WMS
 
-Mobil-first, szürke árnyalatú, clean-line tesztalkalmazás a CRUD, szerepkörök, tábla- és mezőszintű hozzáférés, auditálás, valamint adatvezérelt többnyelvűség validálásához.
+Reszponzív, mobil-first ERP/WMS bemutatóalkalmazás valódi Supabase-adattárolással. A projekt a CRUD-műveleteket, a felhasználó- és jogosultságkezelést, a mezőszintű auditot és az adatvezérelt többnyelvűséget demonstrálja.
 
-## Elkészült funkciók
+## Nyilvános változat
 
-- Teljes teszt-entitás CRUD; a Mentés csak érvényes és ténylegesen módosított űrlapadatoknál aktív.
-- Felhasználó CRUD szerepkör-, aktív állapot- és mezőszintű jogosultságkezeléssel.
-- Felhasználónként összecsukható jogosultságfa tábla- és mezőszintű láthatóság, illetve módosíthatóság beállításához.
-- Mezőszintű auditnapló több feltételt együttesen kezelő, összetett szűrővel.
-- Angol forrásszöveget referenciaként mutató fordításszerkesztő és kulcsonként kezelt, többnyelvű szótárértékek.
+- Alkalmazás: https://log-x-wms.onrender.com
+- Forráskód: https://github.com/LOG-X2018/log-x-wms
+- Supabase-projekt: **LOG-X WMS**, szervezet: **LOG-X Systems Ltd.**, régió: Frankfurt (`eu-central-1`)
 
-## Indítás
+A nyilvános oldal közös, módosítható demókörnyezet. A felhasználóváltó jogosultság-demonstráció, nem valódi bejelentkezés, ezért bizalmas vagy személyes adatot ne adj meg benne.
 
-Node.js 20+ szükséges. A demo külső függőség nélkül fut:
+## Fő funkciók
+
+- Teszt-entitások és felhasználók teljes, validált CRUD-kezelése.
+- Felhasználónkénti RGB kiemelőszín, világos/sötét/rendszer téma és külön tooltip-kapcsoló.
+- Összecsukható jogosultságfa tábla- és mezőszintű `tiltott`, `olvasható`, `módosítható` hozzáféréssel.
+- Mezőszerű auditnapló korábbi és új értékekkel, valamint többszintű ÉS/VAGY szűrővel.
+- Adatvezérelt magyar, angol és német felület; további nyelvek és fordítások szerkeszthetők.
+- Külön, normalizált és többnyelvű kódtárak a legördülő mezőkhöz.
+- ERP/WMS mintamodulok: cikktörzs és készlet, készletmozgás, raktárhelyek, bevételezés és kiszállítás.
+- Mobilintegrációs demó: kamera, QR/vonalkód, helymeghatározás, tájolás/mozgás, rezgés, megosztás, vágólap, hálózat/akkumulátor, NFC és PWA-telepítés — az eszköz és a böngésző támogatásától függően.
+- Mobil-, tablet- és asztali nézet; telepíthető PWA.
+
+## Helyi indítás
+
+Node.js 20 vagy újabb szükséges.
 
 ```powershell
-cd 'D:\Visual Studio Code\Logix VMS'
 npm start
 ```
 
-Nyisd meg: `http://localhost:3000`. Az első indítás a `data/db.json` lokális demo-adattárat hozza létre. Az aktív demo felhasználó váltásával azonnal ellenőrizhető a felhasználónként beállított tábla- és mezőhozzáférés. A tiltott területek és mezők nem kerülnek a felületre vagy az API-válaszba. A felület szövegei fordítási kulcsból érkeznek, az értékek magyarul, angolul, németül és további felvett nyelveken szerkeszthetők.
+Ezután nyisd meg a `http://localhost:3000` címet. Supabase-környezetváltozók nélkül a fejlesztői változat helyi fájlalapú demóállapotot használ.
 
-## Supabase beüzemelés
+## Supabase-beállítás
 
-1. Hozd létre a dedikált **LOG-X WMS** Supabase projektet, majd állítsd be a CLI-t (`supabase login`, `supabase link --project-ref ...`).
-2. Futtasd: `supabase db push`. Ez feltelepíti a `supabase/migrations/20260808090000_log_x_wms.sql` sémát: profilok, felhasználónkénti tábla- és mezőjogosultságok, RLS, szűrt RPC-k, általános mezőszintű audit triggerek és fordítási táblák.
-3. Hozz létre Auth felhasználókat, majd adj nekik `public.profiles` sort admin, editor vagy viewer szerepkörrel. Az alkalmazáskód Supabase adaptere a következő lépésben az `read_test_entities` és `write_test_entity` RPC-kat hívja; ezek RLS mellett is mezőszinten szűrnek.
+A verziózott sémák a `supabase/migrations` mappában találhatók. Új környezetben:
 
-Az `.env.example` a publikus URL/anon-kulcs helyét dokumentálja. Service role kulcsot soha ne adj a böngészőnek.
+```powershell
+supabase login
+supabase link --project-ref <projekt-azonosító>
+supabase db push
+```
 
-## Publikus telepítés
+Nyilvános, közös demómód szerveroldali beállításai:
 
-Az alkalmazás nyilvánosan elérhető: https://log-x-wms.onrender.com
+```text
+SUPABASE_URL=https://<projekt-azonosító>.supabase.co
+SUPABASE_PUBLISHABLE_KEY=<publishable-key>
+SUPABASE_PUBLIC_DEMO_MODE=true
+```
 
-A forráskód nyilvános GitHub-repozitóriuma: https://github.com/LOG-X2018/log-x-wms
+Üzemi használathoz kapcsold ki a publikus demómódot, használj valódi Supabase Auth-felhasználókat, és csak a szerveren állíts be `SUPABASE_SECRET_KEY` vagy legacy `SUPABASE_SERVICE_ROLE_KEY` értéket. Titkos kulcsot soha ne tegyél böngészőkódba, GitHubra vagy dokumentációba.
 
-A Render szolgáltatás a `main` ág új commitjait automatikusan telepíti. A jelenlegi publikus változat a beépített JSON demo-adattárral fut; a felhasználóválasztó szándékosan csak szerepkör-demonstráció, nem valódi bejelentkezés, ezért a demóban nem szabad bizalmas adatot megadni. A tartós, hitelesített adatkezeléshez a dedikált **LOG-X WMS** Supabase projekt létrehozása, migrálása és a Render szolgáltatáshoz kapcsolása még szükséges.
+## Render-telepítés
+
+A `render.yaml` Blueprint Node webszolgáltatást ír le. A Supabase URL-t és kulcsot a Render környezeti változóiban kell megadni; a titkos/publikálható kulcs konkrét értéke nincs a repóban. A `main` ág változásai automatikusan települnek, az állapotellenőrzés végpontja: `/api/health`.
 
 ## Ellenőrzés
 
@@ -44,6 +63,4 @@ npm run check
 npm test
 ```
 
-## Korlátok
-
-A JSON demo-adattár nem tartós production tároló, és a demó felhasználóváltó nem hitelesítés: egy Render-újraindítás vagy újratelepítés visszaállíthatja a demo-adatokat, és bárki kipróbálhatja az előre megadott szerepköröket. A mellékelt Supabase-migráció a tartós adatmodell és a kényszerített RLS/RPC hozzáférés alapja, de a dedikált Supabase projekt még nincs létrehozva és összekötve a publikus alkalmazással.
+Az adatbázis-migrációk RLS-t, explicit grantokat, RPC-ket, mezőszintű auditálást, normalizált ERP/WMS táblákat és többnyelvű kódtárakat tartalmaznak. A nyilvános demómód szándékosan közösen írható; éles rendszerhez valódi autentikáció és szigorú, felhasználói JWT-re épülő hozzáférés szükséges.
