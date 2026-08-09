@@ -35,6 +35,17 @@ test('API audits entities, users and permission changes and enforces denied fiel
     const created = await call('/api/users', { method: 'POST', body: JSON.stringify({ name: 'Teszt Elek', email: 'teszt@example.com', role: 'viewer' }) });
     assert.equal(created.response.status, 201);
     const userId = created.value.id;
+    const editedUser = await call(`/api/users/${userId}`, { method: 'PUT', body: JSON.stringify({ name: 'Teszt Elek szerkesztve', active: true }) });
+    assert.equal(editedUser.response.status, 200);
+    assert.equal(editedUser.value.name, 'Teszt Elek szerkesztve');
+    const duplicateUser = await call('/api/users', { method: 'POST', body: JSON.stringify({ name: 'Duplikált', email: 'TESZT@example.com', role: 'viewer' }) });
+    assert.equal(duplicateUser.response.status, 409);
+
+    const createdEntity = await call('/api/entities', { method: 'POST', body: JSON.stringify({ code: 'WMS-CRUD', name: 'CRUD próba', owner: 'Rendszeradmin', status: 'draft', risk: 'low' }) });
+    assert.equal(createdEntity.response.status, 201);
+    const editedEntity = await call(`/api/entities/${createdEntity.value.id}`, { method: 'PUT', body: JSON.stringify({ name: 'CRUD próba módosítva' }) });
+    assert.equal(editedEntity.response.status, 200);
+    assert.equal(editedEntity.value.name, 'CRUD próba módosítva');
 
     const permission = await call('/api/permissions', { method: 'PUT', body: JSON.stringify({ userId, area: 'entity', field: 'name', access: 'read' }) });
     assert.equal(permission.response.status, 200);
@@ -51,8 +62,92 @@ test('API audits entities, users and permission changes and enforces denied fiel
     const audit = await call('/api/audit');
     assert.equal(audit.response.status, 200);
     assert.ok(audit.value.some(entry => entry.table === 'users' && entry.action === 'create'));
+    assert.ok(audit.value.some(entry => entry.table === 'users' && entry.record === userId && entry.field === 'name' && entry.action === 'update'));
     assert.ok(audit.value.some(entry => entry.table === 'access_permissions' && entry.action === 'permission_change'));
+    assert.ok(audit.value.some(entry => entry.table === 'test_entities' && entry.record === createdEntity.value.id && entry.action === 'create'));
     assert.ok(audit.value.some(entry => entry.table === 'test_entities' && entry.field === 'name' && entry.after === 'Naplózott módosítás'));
+
+    const removedEntity = await call(`/api/entities/${createdEntity.value.id}`, { method: 'DELETE' });
+    assert.equal(removedEntity.response.status, 204);
+  } finally {
+    await new Promise(resolve => server.close(resolve));
+  }
+});
+
+test('lookup dictionaries localize codes and initialize a new language from English', async () => {
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const call = async (url, options = {}) => {
+    const response = await fetch(base + url, { ...options, headers: { 'Content-Type': 'application/json', 'X-Actor-Id': 'u-admin', ...(options.headers || {}) } });
+    const value = response.status === 204 ? null : await response.json();
+    return { response, value };
+  };
+  try {
+    const german = await call('/api/bootstrap?language=de');
+    assert.equal(german.response.status, 200);
+    assert.equal(german.value.selectedLanguage, 'de');
+    assert.deepEqual(german.value.lookups.status.options.map(option => option.code), ['draft', 'active']);
+    assert.equal(german.value.lookups.status.options[0].label, 'Entwurf');
+    assert.equal(german.value.lookups.risk.options[1].englishName, 'Medium');
+    assert.equal(german.value.entities[0].status, 'active');
+
+    const language = await call('/api/languages', { method: 'POST', body: JSON.stringify({ code: 'FR', name: 'Français' }) });
+    assert.equal(language.response.status, 201);
+    assert.equal(language.value.code, 'fr');
+
+    const initialized = await call('/api/translations?language=fr');
+    assert.equal(initialized.response.status, 200);
+    const draft = initialized.value.entries.find(entry => entry.key === 'option.status.draft');
+    assert.deepEqual({ english: draft.english, target: draft.target }, { english: 'Draft', target: 'Draft' });
+
+    const translated = await call('/api/translations', { method: 'PUT', body: JSON.stringify({ language: 'fr', key: 'option.status.draft', value: 'Brouillon' }) });
+    assert.equal(translated.response.status, 200);
+    assert.equal(translated.value.entries.find(entry => entry.key === 'option.status.draft').target, 'Brouillon');
+    const french = await call('/api/bootstrap?language=fr');
+    assert.equal(french.value.lookups.status.options[0].label, 'Brouillon');
+
+    const invalid = await call('/api/entities', { method: 'POST', body: JSON.stringify({ code: 'BAD-OPTION', name: 'Invalid', owner: 'QA', status: 'unknown', risk: 'low' }) });
+    assert.equal(invalid.response.status, 400);
+  } finally {
+    await new Promise(resolve => server.close(resolve));
+  }
+});
+
+test('user writes enforce active permission, filter responses and audit automatic permissions', async () => {
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const call = async (url, options = {}, actor = 'u-admin') => {
+    const response = await fetch(base + url, { ...options, headers: { 'Content-Type': 'application/json', 'X-Actor-Id': actor, ...(options.headers || {}) } });
+    const value = response.status === 204 ? null : await response.json();
+    return { response, value };
+  };
+  try {
+    const manager = await call('/api/users', { method: 'POST', body: JSON.stringify({ name: 'Korlátozott kezelő', email: 'limited.manager@example.com', role: 'viewer' }) });
+    assert.equal(manager.response.status, 201);
+    const managerId = manager.value.id;
+    assert.equal((await call('/api/permissions', { method: 'PUT', body: JSON.stringify({ userId: managerId, area: 'users', field: null, access: 'write' }) })).response.status, 200);
+    assert.equal((await call('/api/permissions', { method: 'PUT', body: JSON.stringify({ userId: managerId, area: 'users', field: 'active', access: 'deny' }) })).response.status, 200);
+
+    const activeBypass = await call('/api/users', { method: 'POST', body: JSON.stringify({ name: 'Tiltott aktív', email: 'blocked.active@example.com', role: 'viewer', active: false }) }, managerId);
+    assert.equal(activeBypass.response.status, 403);
+
+    const created = await call('/api/users', { method: 'POST', body: JSON.stringify({ name: 'Szűrt válasz', email: 'filtered.response@example.com', role: 'viewer' }) }, managerId);
+    assert.equal(created.response.status, 201);
+    assert.equal(Object.hasOwn(created.value, 'active'), false);
+    const createdId = created.value.id;
+
+    assert.equal((await call('/api/permissions', { method: 'PUT', body: JSON.stringify({ userId: managerId, area: 'users', field: 'email', access: 'deny' }) })).response.status, 200);
+    const updated = await call(`/api/users/${createdId}`, { method: 'PUT', body: JSON.stringify({ name: 'Szűrt válasz módosítva' }) }, managerId);
+    assert.equal(updated.response.status, 200);
+    assert.equal(updated.value.name, 'Szűrt válasz módosítva');
+    assert.equal(Object.hasOwn(updated.value, 'email'), false);
+    assert.equal(Object.hasOwn(updated.value, 'active'), false);
+
+    assert.equal((await call(`/api/users/${createdId}`, { method: 'DELETE' })).response.status, 204);
+    const auditLog = await call('/api/audit');
+    const permissionAudit = auditLog.value.filter(entry => entry.table === 'access_permissions' && entry.record === `${createdId}:entity` && entry.field === '__table__');
+    assert.ok(permissionAudit.some(entry => entry.before === null && entry.after === 'read'));
+    assert.ok(permissionAudit.some(entry => entry.before === 'read' && entry.after === null));
   } finally {
     await new Promise(resolve => server.close(resolve));
   }
