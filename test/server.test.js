@@ -57,3 +57,20 @@ test('API audits entities, users and permission changes and enforces denied fiel
     await new Promise(resolve => server.close(resolve));
   }
 });
+
+test('public application files are available without an API actor header', async () => {
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  const base = `http://127.0.0.1:${server.address().port}`;
+  try {
+    const page = await fetch(base + '/');
+    assert.equal(page.status, 200);
+    assert.match(page.headers.get('content-type'), /^text\/html/);
+    assert.match(await page.text(), /LOG-X WMS/);
+
+    const script = await fetch(base + '/app.js');
+    assert.equal(script.status, 200);
+    assert.match(script.headers.get('content-type'), /^(?:text|application)\/javascript/);
+  } finally {
+    await new Promise(resolve => server.close(resolve));
+  }
+});

@@ -130,6 +130,7 @@ const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, 'http://localhost');
     const db = load();
+    if (!url.pathname.startsWith('/api/')) return serveFile(res, url.pathname);
     if (url.pathname === '/api/bootstrap' && req.method === 'GET') return json(res, 200, bootstrap(db, requestActor(db, req, true)));
     const actor = requestActor(db, req);
 
@@ -186,7 +187,7 @@ const server = http.createServer(async (req, res) => {
       requireAccess(db, actor, 'translations', 'write'); const { language, key, value } = await body(req); if (!db.translations[language]) fail(400, 'Unknown language');
       const previous = db.translations[language][key]; db.translations[language][key] = value; audit(db, actor, 'translation_values', `${language}:${key}`, 'update', key, previous, value); save(db); return json(res, 200, db.translations[language]);
     }
-    serveFile(res, url.pathname);
+    return json(res, 404, { error: 'Not found' });
   } catch (error) { json(res, error.status || 500, { error: error.message }); }
 });
 
