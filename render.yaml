@@ -5,5 +5,12 @@ services:
     plan: free
     buildCommand: npm run check
     startCommand: npm start
-    healthCheckPath: /
+    healthCheckPath: /api/health
     autoDeploy: true
+    envVars:
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_PUBLISHABLE_KEY
+        sync: false
+      - key: SUPABASE_PUBLIC_DEMO_MODE
+        value: "true"

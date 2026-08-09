@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="LOG-X WMS">
+  <rect width="512" height="512" rx="112" fill="#111318"/>
+  <path d="M112 112h72v216h120v72H112zm220 0h80l-73 112 81 176h-82l-43-104-41 104h-81l82-176-72-112h80l34 78z" fill="#fff"/>
+  <rect x="88" y="424" width="336" height="24" rx="12" fill="#4f46e5"/>
+</svg>
